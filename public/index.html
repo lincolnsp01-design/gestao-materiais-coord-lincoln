@@ -35,7 +35,12 @@
     </section>
     <section class="card">
       <h2>3. Assinatura do técnico</h2>
-      <canvas id="assinatura"></canvas>
+      <p class="instrucao-assinatura">Peça ao técnico para assinar com o dedo ou com o mouse dentro do quadro abaixo.</p>
+      <div class="quadro-assinatura">
+        <canvas id="assinatura" aria-label="Campo para desenhar a assinatura"></canvas>
+        <span id="dica-assinatura">ASSINE AQUI</span>
+        <span class="linha-assinatura"></span>
+      </div>
       <button id="limpar" class="secundario">Limpar assinatura</button>
     </section>
     <button id="registrar" class="registrar">Registrar fornecimento</button>

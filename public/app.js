@@ -32,6 +32,7 @@ async function iniciar() {
     $("login").hidden = true;
     $("painel").hidden = false;
     $("fornecedor").textContent = me.nome;
+    requestAnimationFrame(ajustarCanvas);
     if (!$("materiais").children.length) adicionarMaterial();
     await carregarHistorico();
   } catch {}
@@ -44,6 +45,7 @@ $("login-form").onsubmit = async event => {
     $("fornecedor").textContent = me.nome;
     $("login").hidden = true;
     $("painel").hidden = false;
+    requestAnimationFrame(ajustarCanvas);
     adicionarMaterial();
     await carregarHistorico();
   } catch (error) { $("login-erro").textContent = error.message; }
@@ -62,28 +64,60 @@ $("sair").onclick = async () => { await api("/api/logout", { method: "POST" }); 
 const canvas = $("assinatura");
 const ctx = canvas.getContext("2d");
 let desenhando = false;
+let assinaturaFeita = false;
 function ajustarCanvas() {
+  if (!canvas.clientWidth || !canvas.clientHeight) return;
   const ratio = devicePixelRatio || 1;
-  canvas.width = canvas.clientWidth * ratio;
-  canvas.height = canvas.clientHeight * ratio;
-  ctx.scale(ratio, ratio);
+  const largura = Math.round(canvas.clientWidth * ratio);
+  const altura = Math.round(canvas.clientHeight * ratio);
+  if (canvas.width === largura && canvas.height === altura) return;
+  canvas.width = largura;
+  canvas.height = altura;
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
   ctx.lineWidth = 2.4;
   ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.strokeStyle = "#17211a";
 }
 function ponto(event) {
   const rect = canvas.getBoundingClientRect();
   const touch = event.touches?.[0];
   return { x: (touch?.clientX ?? event.clientX) - rect.left, y: (touch?.clientY ?? event.clientY) - rect.top };
 }
-canvas.onpointerdown = event => { desenhando = true; const p = ponto(event); ctx.beginPath(); ctx.moveTo(p.x, p.y); };
-canvas.onpointermove = event => { if (!desenhando) return; const p = ponto(event); ctx.lineTo(p.x, p.y); ctx.stroke(); };
-canvas.onpointerup = canvas.onpointerleave = () => { desenhando = false; };
-$("limpar").onclick = () => ctx.clearRect(0, 0, canvas.width, canvas.height);
+canvas.onpointerdown = event => {
+  event.preventDefault();
+  canvas.setPointerCapture?.(event.pointerId);
+  desenhando = true;
+  assinaturaFeita = true;
+  $("dica-assinatura").hidden = true;
+  const p = ponto(event);
+  ctx.beginPath();
+  ctx.moveTo(p.x, p.y);
+  ctx.lineTo(p.x + 0.1, p.y + 0.1);
+  ctx.stroke();
+};
+canvas.onpointermove = event => {
+  if (!desenhando) return;
+  event.preventDefault();
+  const p = ponto(event);
+  ctx.lineTo(p.x, p.y);
+  ctx.stroke();
+};
+canvas.onpointerup = canvas.onpointercancel = event => {
+  desenhando = false;
+  if (event.pointerId !== undefined && canvas.hasPointerCapture?.(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+};
+$("limpar").onclick = () => {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  assinaturaFeita = false;
+  $("dica-assinatura").hidden = false;
+};
 
 $("registrar").onclick = async () => {
   try {
     const materiais = [...document.querySelectorAll(".material input")].map(i => i.value.trim()).filter(Boolean);
     if (!tecnicoAtual) throw new Error("Pesquise o técnico primeiro");
+    if (!assinaturaFeita) throw new Error("Peça ao técnico para assinar no quadro");
     const registro = await api("/api/registros", {
       method: "POST",
       body: JSON.stringify({ tecnico: tecnicoAtual, materiais, assinatura: canvas.toDataURL("image/png") }),
@@ -97,5 +131,4 @@ $("registrar").onclick = async () => {
 };
 
 addEventListener("resize", ajustarCanvas);
-ajustarCanvas();
 iniciar();
