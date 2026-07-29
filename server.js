@@ -141,6 +141,10 @@ app.post("/api/admin/importar-tecnicos", requireUser, async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
+    await client.query(
+      "DELETE FROM tecnicos WHERE UPPER(coordenador)=UPPER($1)",
+      ["LINCOLN RIBEIRO DO NASCIMENTO"]
+    );
     for (const tecnico of tecnicos) {
       await client.query(
         `INSERT INTO tecnicos (matricula,nome,supervisor,coordenador,status)
