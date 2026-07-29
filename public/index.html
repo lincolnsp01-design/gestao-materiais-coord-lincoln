@@ -41,7 +41,17 @@
       <button id="adicionar" class="secundario">+ Acrescentar material</button>
     </section>
     <section class="card">
-      <h2>3. Assinatura do técnico</h2>
+      <h2>3. Registro fotográfico</h2>
+      <p class="instrucao-foto">Registre a foto dos equipamentos + crachá do técnico</p>
+      <label for="foto" class="botao-camera">📷 ABRIR CÂMERA DO CELULAR</label>
+      <input id="foto" class="entrada-foto" type="file" accept="image/*" capture="environment">
+      <div id="foto-preview-area" class="foto-preview-area" hidden>
+        <img id="foto-preview" alt="Foto dos equipamentos e crachá">
+        <button id="trocar-foto" type="button" class="secundario">Tirar outra foto</button>
+      </div>
+    </section>
+    <section class="card">
+      <h2>4. Assinatura do técnico</h2>
       <p class="instrucao-assinatura">Peça ao técnico para assinar com o dedo ou com o mouse dentro do quadro abaixo.</p>
       <div class="quadro-assinatura">
         <canvas id="assinatura" aria-label="Campo para desenhar a assinatura"></canvas>

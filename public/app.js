@@ -21,9 +21,9 @@ function adicionarMaterial(valor = "") {
 
 async function carregarHistorico() {
   const registros = await api("/api/registros");
-  $("historico").innerHTML = registros.length ? `<table><thead><tr><th>Data</th><th>Técnico</th><th>Materiais</th><th>Fornecido por</th></tr></thead><tbody>${
-    registros.map(r => `<tr><td>${new Date(r.criado_em).toLocaleString("pt-BR")}</td><td>${r.tecnico.NOME || r.tecnico.nome || ""}</td><td>${r.materiais.join(", ")}</td><td>${r.fornecido_por}</td></tr>`).join("")
-  }</tbody></table>` : "Nenhum fornecimento registrado.";
+  $("historico").innerHTML = registros.length ? `<div class="tabela-scroll"><table><thead><tr><th>Data</th><th>Técnico</th><th>Materiais</th><th>Fornecido por</th><th>Comprovante</th></tr></thead><tbody>${
+    registros.map(r => `<tr><td>${new Date(r.criado_em).toLocaleString("pt-BR")}</td><td>${r.tecnico.NOME || r.tecnico.nome || ""}</td><td>${r.materiais.join(", ")}</td><td>${r.fornecido_por}</td><td><a class="exportar-pdf" href="/api/registros/${r.id}/pdf" target="_blank">Exportar PDF</a></td></tr>`).join("")
+  }</tbody></table></div>` : "Nenhum fornecimento registrado.";
 }
 
 async function iniciar() {
@@ -114,19 +114,58 @@ $("limpar").onclick = () => {
   $("dica-assinatura").hidden = false;
 };
 
+let fotoData = "";
+async function prepararFoto(arquivo) {
+  const url = URL.createObjectURL(arquivo);
+  const imagem = new Image();
+  await new Promise((resolve, reject) => {
+    imagem.onload = resolve;
+    imagem.onerror = reject;
+    imagem.src = url;
+  });
+  const maximo = 1400;
+  const escala = Math.min(1, maximo / Math.max(imagem.width, imagem.height));
+  const redutor = document.createElement("canvas");
+  redutor.width = Math.round(imagem.width * escala);
+  redutor.height = Math.round(imagem.height * escala);
+  redutor.getContext("2d").drawImage(imagem, 0, 0, redutor.width, redutor.height);
+  fotoData = redutor.toDataURL("image/jpeg", 0.78);
+  URL.revokeObjectURL(url);
+  $("foto-preview").src = fotoData;
+  $("foto-preview-area").hidden = false;
+}
+
+$("foto").onchange = async event => {
+  const arquivo = event.target.files?.[0];
+  if (!arquivo) return;
+  try {
+    await prepararFoto(arquivo);
+    $("mensagem").textContent = "Foto registrada com sucesso.";
+  } catch {
+    $("mensagem").textContent = "Não foi possível processar a foto. Tente novamente.";
+  }
+};
+
+$("trocar-foto").onclick = () => $("foto").click();
+
 $("registrar").onclick = async () => {
   try {
     const materiais = [...document.querySelectorAll(".material input")].map(i => i.value.trim()).filter(Boolean);
     if (!tecnicoAtual) throw new Error("Pesquise o técnico primeiro");
+    if (!fotoData) throw new Error("Registre a foto dos equipamentos + crachá do técnico");
     if (!assinaturaFeita) throw new Error("Peça ao técnico para assinar no quadro");
     const registro = await api("/api/registros", {
       method: "POST",
-      body: JSON.stringify({ tecnico: tecnicoAtual, materiais, assinatura: canvas.toDataURL("image/png") }),
+      body: JSON.stringify({ tecnico: tecnicoAtual, materiais, foto: fotoData, assinatura: canvas.toDataURL("image/png") }),
     });
     $("mensagem").textContent = `Registrado em ${new Date(registro.criado_em).toLocaleString("pt-BR")}.`;
     $("materiais").innerHTML = "";
     adicionarMaterial();
     $("limpar").click();
+    fotoData = "";
+    $("foto").value = "";
+    $("foto-preview").removeAttribute("src");
+    $("foto-preview-area").hidden = true;
     await carregarHistorico();
   } catch (error) { $("mensagem").textContent = error.message; }
 };

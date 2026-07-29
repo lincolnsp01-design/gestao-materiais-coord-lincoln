@@ -1,6 +1,7 @@
 const express = require("express");
 const crypto = require("crypto");
 const { Pool } = require("pg");
+const PDFDocument = require("pdfkit");
 
 const app = express();
 const pool = new Pool({
@@ -9,7 +10,7 @@ const pool = new Pool({
 });
 const secret = process.env.SESSION_SECRET || crypto.randomBytes(32).toString("hex");
 
-app.use(express.json({ limit: "5mb" }));
+app.use(express.json({ limit: "12mb" }));
 app.use(express.static("public"));
 
 function hashPassword(password, salt = crypto.randomBytes(16).toString("hex")) {
@@ -80,6 +81,7 @@ async function initialize() {
       coordenador TEXT,
       status TEXT
     );
+    ALTER TABLE registros ADD COLUMN IF NOT EXISTS foto TEXT;
   `);
   const { rows } = await pool.query("SELECT COUNT(*)::int AS total FROM usuarios");
   if (rows[0].total === 0 && process.env.INITIAL_USERS_JSON) {
@@ -165,21 +167,78 @@ app.post("/api/admin/importar-tecnicos", requireUser, async (req, res) => {
 });
 
 app.get("/api/registros", requireUser, async (_req, res) => {
-  const { rows } = await pool.query("SELECT * FROM registros ORDER BY criado_em DESC LIMIT 100");
+  const { rows } = await pool.query(
+    "SELECT id,tecnico,materiais,fornecido_por,fornecedor_login,criado_em,(foto IS NOT NULL) AS tem_foto FROM registros ORDER BY criado_em DESC LIMIT 100"
+  );
   res.json(rows);
 });
 
 app.post("/api/registros", requireUser, async (req, res) => {
-  const { tecnico, materiais, assinatura } = req.body;
-  if (!tecnico || !Array.isArray(materiais) || !materiais.length || !assinatura) {
-    return res.status(400).json({ error: "Preencha técnico, materiais e assinatura" });
+  const { tecnico, materiais, assinatura, foto } = req.body;
+  if (!tecnico || !Array.isArray(materiais) || !materiais.length || !assinatura || !foto) {
+    return res.status(400).json({ error: "Preencha técnico, materiais, foto e assinatura" });
   }
   const { rows } = await pool.query(
-    `INSERT INTO registros (tecnico,materiais,assinatura,fornecido_por,fornecedor_login)
-     VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-    [tecnico, JSON.stringify(materiais), assinatura, req.user.nome, req.user.login]
+    `INSERT INTO registros (tecnico,materiais,assinatura,foto,fornecido_por,fornecedor_login)
+     VALUES ($1,$2,$3,$4,$5,$6) RETURNING id,tecnico,materiais,fornecido_por,criado_em`,
+    [tecnico, JSON.stringify(materiais), assinatura, foto, req.user.nome, req.user.login]
   );
   res.status(201).json(rows[0]);
+});
+
+function dataUrlBuffer(value) {
+  const match = String(value || "").match(/^data:image\/(?:png|jpeg|jpg);base64,(.+)$/);
+  return match ? Buffer.from(match[1], "base64") : null;
+}
+
+app.get("/api/registros/:id/pdf", requireUser, async (req, res) => {
+  const { rows } = await pool.query("SELECT * FROM registros WHERE id=$1", [req.params.id]);
+  const registro = rows[0];
+  if (!registro) return res.status(404).json({ error: "Registro não encontrado" });
+
+  const tecnico = registro.tecnico || {};
+  const nome = tecnico.nome || tecnico.NOME || "Técnico";
+  const matricula = tecnico.matricula || tecnico.MATR_SAP || "-";
+  const supervisor = tecnico.supervisor || tecnico.SUPERVISOR || "-";
+  const coordenador = tecnico.coordenador || tecnico.COORDENADOR || "-";
+  const foto = dataUrlBuffer(registro.foto);
+  const assinatura = dataUrlBuffer(registro.assinatura);
+
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename="fornecimento-${registro.id}.pdf"`);
+  const doc = new PDFDocument({ size: "A4", margin: 45, info: { Title: `Comprovante de fornecimento ${registro.id}` } });
+  doc.pipe(res);
+  doc.rect(0, 0, 595, 105).fill("#092e25");
+  doc.fillColor("#43ef99").fontSize(25).font("Helvetica-Bold").text("BH", 45, 30);
+  doc.fillColor("#ffffff").fontSize(17).text("CONTROLE DE MATERIAIS", 100, 28);
+  doc.fillColor("#a8d9c0").fontSize(9).font("Helvetica").text("GESTÃO COORDENADOR LINCOLN • BELO HORIZONTE", 100, 55);
+  doc.fillColor("#173529").fontSize(15).font("Helvetica-Bold").text("COMPROVANTE DE FORNECIMENTO", 45, 130);
+  doc.fontSize(10).font("Helvetica");
+  doc.text(`Registro: ${registro.id}`, 45, 160);
+  doc.text(`Data e horário: ${new Date(registro.criado_em).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}`, 45, 178);
+  doc.text(`Fornecido por: ${registro.fornecido_por}`, 45, 196);
+  doc.moveTo(45, 222).lineTo(550, 222).strokeColor("#c9d8cf").stroke();
+  doc.font("Helvetica-Bold").text("TÉCNICO RECEBEDOR", 45, 238);
+  doc.font("Helvetica").text(`Nome: ${nome}`, 45, 258);
+  doc.text(`Matrícula SAP: ${matricula}`, 45, 276);
+  doc.text(`Supervisor: ${supervisor}`, 45, 294);
+  doc.text(`Coordenador: ${coordenador}`, 45, 312);
+  doc.font("Helvetica-Bold").text("MATERIAIS FORNECIDOS", 45, 342);
+  doc.font("Helvetica");
+  (registro.materiais || []).forEach((material, index) => doc.text(`${index + 1}. ${material}`, 55, 362 + index * 16));
+  const conteudoY = Math.max(420, 378 + (registro.materiais || []).length * 16);
+  if (foto) {
+    doc.font("Helvetica-Bold").text("FOTO DOS EQUIPAMENTOS + CRACHÁ", 45, conteudoY);
+    try { doc.image(foto, 45, conteudoY + 20, { fit: [315, 210], align: "left", valign: "center" }); } catch {}
+  }
+  if (assinatura) {
+    doc.font("Helvetica-Bold").text("ASSINATURA DO TÉCNICO", 385, conteudoY);
+    try { doc.image(assinatura, 385, conteudoY + 20, { fit: [165, 100], align: "center", valign: "center" }); } catch {}
+    doc.moveTo(385, conteudoY + 125).lineTo(550, conteudoY + 125).strokeColor("#708379").stroke();
+    doc.fontSize(8).font("Helvetica").text(nome, 385, conteudoY + 130, { width: 165, align: "center" });
+  }
+  doc.fontSize(8).fillColor("#668077").text("Documento gerado pelo Controle de Materiais — Belo Horizonte", 45, 805, { width: 505, align: "center" });
+  doc.end();
 });
 
 app.use((_req, res) => res.sendFile(require("path").join(__dirname, "public", "index.html")));
