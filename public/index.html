@@ -39,6 +39,8 @@
       <h2>2. Materiais fornecidos</h2>
       <div id="materiais"></div>
       <button id="adicionar" class="secundario">+ Acrescentar material</button>
+      <button id="ler-codigo" type="button" class="botao-leitor">▣ Ler código de barras ou QR Code</button>
+      <p class="ajuda-leitor">Aponte a câmera para o código do material e aguarde a leitura automática.</p>
     </section>
     <section class="card">
       <h2>3. Registro fotográfico</h2>
@@ -69,6 +71,17 @@
       <div id="historico"></div>
     </section>
   </main>
+  <div id="modal-leitor" class="modal-leitor" hidden>
+    <div class="painel-leitor">
+      <div class="topo-leitor">
+        <div><strong>Leitor de material</strong><small>Código de barras ou QR Code</small></div>
+        <button id="fechar-leitor" type="button" aria-label="Fechar leitor">✕</button>
+      </div>
+      <div id="camera-leitor"></div>
+      <p id="status-leitor">Autorize o uso da câmera e aponte para o código.</p>
+    </div>
+  </div>
+  <script src="/vendor/html5-qrcode.min.js"></script>
   <script src="/app.js"></script>
 </body>
 </html>

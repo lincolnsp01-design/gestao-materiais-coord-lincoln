@@ -62,6 +62,69 @@ $("pesquisar").onclick = async () => {
 $("adicionar").onclick = () => adicionarMaterial();
 $("sair").onclick = async () => { await api("/api/logout", { method: "POST" }); location.reload(); };
 
+let leitorCodigo = null;
+let leitorEncerrando = false;
+
+async function fecharLeitor() {
+  if (leitorEncerrando) return;
+  leitorEncerrando = true;
+  try {
+    if (leitorCodigo?.isScanning) await leitorCodigo.stop();
+    leitorCodigo?.clear();
+  } catch {}
+  leitorCodigo = null;
+  $("modal-leitor").hidden = true;
+  leitorEncerrando = false;
+}
+
+function inserirCodigoMaterial(codigo) {
+  let campo = [...document.querySelectorAll(".material input")].find(input => !input.value.trim());
+  if (!campo) {
+    adicionarMaterial();
+    campo = document.querySelector(".material:last-child input");
+  }
+  campo.value = codigo;
+  campo.focus();
+  campo.classList.add("codigo-lido");
+  setTimeout(() => campo.classList.remove("codigo-lido"), 1200);
+}
+
+$("ler-codigo").onclick = async () => {
+  $("modal-leitor").hidden = false;
+  $("status-leitor").textContent = "Autorize o uso da câmera e aponte para o código.";
+  try {
+    leitorCodigo = new Html5Qrcode("camera-leitor", {
+      formatsToSupport: [
+        Html5QrcodeSupportedFormats.QR_CODE,
+        Html5QrcodeSupportedFormats.CODE_128,
+        Html5QrcodeSupportedFormats.CODE_39,
+        Html5QrcodeSupportedFormats.EAN_13,
+        Html5QrcodeSupportedFormats.EAN_8,
+        Html5QrcodeSupportedFormats.UPC_A,
+        Html5QrcodeSupportedFormats.UPC_E,
+        Html5QrcodeSupportedFormats.ITF,
+        Html5QrcodeSupportedFormats.CODABAR,
+      ],
+    });
+    await leitorCodigo.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: (largura, altura) => ({ width: Math.min(300, largura * .82), height: Math.min(180, altura * .55) }) },
+      async codigo => {
+        inserirCodigoMaterial(codigo);
+        $("mensagem").textContent = `Código ${codigo} adicionado aos materiais.`;
+        await fecharLeitor();
+      },
+      () => {}
+    );
+    $("status-leitor").textContent = "Câmera ativa — centralize o código dentro do quadro.";
+  } catch {
+    $("status-leitor").textContent = "Não foi possível abrir a câmera. Verifique a permissão do navegador.";
+  }
+};
+
+$("fechar-leitor").onclick = fecharLeitor;
+$("modal-leitor").onclick = event => { if (event.target === $("modal-leitor")) fecharLeitor(); };
+
 const canvas = $("assinatura");
 const ctx = canvas.getContext("2d");
 let desenhando = false;
