@@ -73,6 +73,13 @@ async function initialize() {
       fornecedor_login TEXT NOT NULL,
       criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+    CREATE TABLE IF NOT EXISTS tecnicos (
+      matricula TEXT PRIMARY KEY,
+      nome TEXT NOT NULL,
+      supervisor TEXT,
+      coordenador TEXT,
+      status TEXT
+    );
   `);
   const { rows } = await pool.query("SELECT COUNT(*)::int AS total FROM usuarios");
   if (rows[0].total === 0 && process.env.INITIAL_USERS_JSON) {
@@ -109,11 +116,49 @@ app.post("/api/logout", (_req, res) => {
 app.get("/api/me", requireUser, (req, res) => res.json(req.user));
 
 app.get("/api/tecnicos/:matricula", requireUser, (req, res) => {
-  const tecnicos = JSON.parse(process.env.TECHNICIANS_JSON || "[]");
   const matricula = String(req.params.matricula).trim().toUpperCase();
-  const tecnico = tecnicos.find(t => String(t.MATR_SAP || t.matricula || "").trim().toUpperCase() === matricula);
-  if (!tecnico) return res.status(404).json({ error: "Técnico não encontrado" });
-  res.json(tecnico);
+  pool.query("SELECT * FROM tecnicos WHERE UPPER(matricula)=$1", [matricula])
+    .then(({ rows }) => rows[0]
+      ? res.json(rows[0])
+      : res.status(404).json({ error: "Técnico não encontrado" }))
+    .catch(() => res.status(500).json({ error: "Não foi possível pesquisar o técnico" }));
+});
+
+app.post("/api/admin/importar-tecnicos", async (req, res) => {
+  if (!process.env.IMPORT_TOKEN || req.headers.authorization !== `Bearer ${process.env.IMPORT_TOKEN}`) {
+    return res.status(401).json({ error: "Importação não autorizada" });
+  }
+  const tecnicos = Array.isArray(req.body) ? req.body : [];
+  if (!tecnicos.length || tecnicos.length > 10000) {
+    return res.status(400).json({ error: "Cadastro inválido" });
+  }
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    for (const tecnico of tecnicos) {
+      await client.query(
+        `INSERT INTO tecnicos (matricula,nome,supervisor,coordenador,status)
+         VALUES ($1,$2,$3,$4,$5)
+         ON CONFLICT (matricula) DO UPDATE SET
+           nome=EXCLUDED.nome, supervisor=EXCLUDED.supervisor,
+           coordenador=EXCLUDED.coordenador, status=EXCLUDED.status`,
+        [
+          String(tecnico.matricula || tecnico.MATR_SAP || "").trim(),
+          String(tecnico.nome || tecnico.NOME || "").trim(),
+          tecnico.supervisor || tecnico.SUPERVISOR || null,
+          tecnico.coordenador || tecnico.COORDENADOR || null,
+          tecnico.status || tecnico.STATUS || null,
+        ]
+      );
+    }
+    await client.query("COMMIT");
+    res.json({ importados: tecnicos.length });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    res.status(500).json({ error: "Falha ao importar técnicos" });
+  } finally {
+    client.release();
+  }
 });
 
 app.get("/api/registros", requireUser, async (_req, res) => {
