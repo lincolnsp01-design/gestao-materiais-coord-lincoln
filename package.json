@@ -9,6 +9,7 @@
     "node": ">=20"
   },
   "dependencies": {
+    "exceljs": "^4.4.0",
     "express": "^5.1.0",
     "html5-qrcode": "^2.3.8",
     "pdfkit": "^0.19.1",

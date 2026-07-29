@@ -2,6 +2,7 @@ const express = require("express");
 const crypto = require("crypto");
 const { Pool } = require("pg");
 const PDFDocument = require("pdfkit");
+const ExcelJS = require("exceljs");
 
 const app = express();
 const pool = new Pool({
@@ -171,6 +172,57 @@ app.get("/api/registros", requireUser, async (_req, res) => {
     "SELECT id,tecnico,materiais,fornecido_por,fornecedor_login,criado_em,(foto IS NOT NULL) AS tem_foto FROM registros ORDER BY criado_em DESC LIMIT 100"
   );
   res.json(rows);
+});
+
+app.get("/api/registros-exportar/excel", requireUser, async (_req, res) => {
+  const { rows } = await pool.query("SELECT * FROM registros ORDER BY criado_em DESC");
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = "Controle de Materiais - Coord Lincoln";
+  workbook.created = new Date();
+  const sheet = workbook.addWorksheet("Fornecimentos", {
+    views: [{ state: "frozen", ySplit: 1 }],
+    properties: { defaultRowHeight: 20 },
+  });
+  sheet.columns = [
+    { header: "DATA E HORÁRIO", key: "data", width: 23 },
+    { header: "NOME DO TÉCNICO", key: "nome", width: 38 },
+    { header: "MATRÍCULA SAP", key: "matricula", width: 18 },
+    { header: "NÚMERO DO MATERIAL", key: "material", width: 25 },
+    { header: "SUPERVISOR", key: "supervisor", width: 38 },
+    { header: "COORDENADOR", key: "coordenador", width: 38 },
+    { header: "FORNECIDO POR", key: "fornecidoPor", width: 38 },
+  ];
+  for (const registro of rows) {
+    const tecnico = registro.tecnico || {};
+    for (const material of registro.materiais || []) {
+      sheet.addRow({
+        data: new Date(registro.criado_em).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }),
+        nome: tecnico.nome || tecnico.NOME || "",
+        matricula: tecnico.matricula || tecnico.MATR_SAP || "",
+        material,
+        supervisor: tecnico.supervisor || tecnico.SUPERVISOR || "",
+        coordenador: tecnico.coordenador || tecnico.COORDENADOR || "",
+        fornecidoPor: registro.fornecido_por,
+      });
+    }
+  }
+  sheet.getRow(1).eachCell(cell => {
+    cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF176B3C" } };
+    cell.alignment = { vertical: "middle", horizontal: "center" };
+  });
+  sheet.autoFilter = { from: "A1", to: "G1" };
+  sheet.eachRow((row, rowNumber) => {
+    if (rowNumber > 1 && rowNumber % 2 === 0) {
+      row.eachCell(cell => {
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEAF4ED" } };
+      });
+    }
+  });
+  res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  res.setHeader("Content-Disposition", `attachment; filename="historico-fornecimentos-${new Date().toISOString().slice(0, 10)}.xlsx"`);
+  await workbook.xlsx.write(res);
+  res.end();
 });
 
 app.post("/api/registros", requireUser, async (req, res) => {
