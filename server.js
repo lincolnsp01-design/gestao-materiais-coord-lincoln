@@ -182,7 +182,7 @@ app.post("/api/registros", requireUser, async (req, res) => {
 app.use((_req, res) => res.sendFile(require("path").join(__dirname, "public", "index.html")));
 
 initialize()
-  .then(() => app.listen(process.env.PORT || 3000))
+  .then(() => app.listen(3000, "0.0.0.0"))
   .catch(error => {
     console.error(error);
     process.exit(1);
