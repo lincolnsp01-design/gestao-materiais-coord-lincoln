@@ -153,7 +153,7 @@ app.post("/api/admin/importar-tecnicos", requireUser, async (req, res) => {
            nome=EXCLUDED.nome, supervisor=EXCLUDED.supervisor,
            coordenador=EXCLUDED.coordenador, status=EXCLUDED.status`,
         [
-          String(tecnico.matricula || tecnico.MATR_SAP || "").trim(),
+          String(tecnico.re || tecnico.RE || tecnico.matricula || "").trim(),
           String(tecnico.nome || tecnico.NOME || "").trim(),
           tecnico.supervisor || tecnico.SUPERVISOR || null,
           tecnico.coordenador || tecnico.COORDENADOR || null,
@@ -190,7 +190,7 @@ app.get("/api/registros-exportar/excel", requireUser, async (_req, res) => {
   sheet.columns = [
     { header: "DATA E HORÁRIO", key: "data", width: 23 },
     { header: "NOME DO TÉCNICO", key: "nome", width: 38 },
-    { header: "MATRÍCULA SAP", key: "matricula", width: 18 },
+    { header: "RE", key: "matricula", width: 18 },
     { header: "NÚMERO DO MATERIAL", key: "material", width: 25 },
     { header: "SUPERVISOR", key: "supervisor", width: 38 },
     { header: "COORDENADOR", key: "coordenador", width: 38 },
@@ -276,7 +276,7 @@ app.get("/api/registros/:id/pdf", requireUser, async (req, res) => {
   doc.moveTo(45, 222).lineTo(550, 222).strokeColor("#c9d8cf").stroke();
   doc.font("Helvetica-Bold").text("TÉCNICO RECEBEDOR", 45, 238);
   doc.font("Helvetica").text(`Nome: ${nome}`, 45, 258);
-  doc.text(`Matrícula SAP: ${matricula}`, 45, 276);
+  doc.text(`RE: ${matricula}`, 45, 276);
   doc.text(`Supervisor: ${supervisor}`, 45, 294);
   doc.text(`Coordenador: ${coordenador}`, 45, 312);
   doc.font("Helvetica-Bold").text("MATERIAIS FORNECIDOS", 45, 342);
