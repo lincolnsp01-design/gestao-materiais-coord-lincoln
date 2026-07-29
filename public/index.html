@@ -8,14 +8,21 @@
 </head>
 <body>
   <section id="login" class="card login">
-    <h1>Gestão de materiais<br><span>Coord Lincoln</span></h1>
-    <p>Entre com o nome de usuário e a senha recebidos.</p>
+    <div class="marca-login" aria-label="BH">
+      <span class="logo-bh">BH</span>
+      <span class="pulso"></span>
+    </div>
+    <p class="local-login">BELO HORIZONTE</p>
+    <h1>CONTROLE DE<br><span>FORNECIMENTO</span></h1>
+    <p class="gestao-login">GESTÃO COORDENADOR LINCOLN</p>
+    <p class="orientacao-login">Acesso seguro ao sistema de materiais</p>
     <form id="login-form">
-      <label>Usuário<input id="usuario" autocomplete="username" required></label>
-      <label>Senha<input id="senha" type="password" autocomplete="current-password" required></label>
-      <button>Entrar</button>
+      <label>USUÁRIO<input id="usuario" autocomplete="username" placeholder="Digite seu usuário" required></label>
+      <label>SENHA<input id="senha" type="password" autocomplete="current-password" placeholder="Digite sua senha" required></label>
+      <button>ACESSAR SISTEMA <span aria-hidden="true">→</span></button>
       <p id="login-erro" class="erro"></p>
     </form>
+    <p class="rodape-login"><span></span> SISTEMA ONLINE</p>
   </section>
 
   <main id="painel" hidden>
@@ -41,6 +48,8 @@
         <span id="dica-assinatura">ASSINE AQUI</span>
         <span class="linha-assinatura"></span>
       </div>
+      <p class="nome-assinante" id="nome-assinante">Técnico ainda não selecionado</p>
+      <p class="legenda-assinante">Nome do técnico recebedor</p>
       <button id="limpar" class="secundario">Limpar assinatura</button>
     </section>
     <button id="registrar" class="registrar">Registrar fornecimento</button>

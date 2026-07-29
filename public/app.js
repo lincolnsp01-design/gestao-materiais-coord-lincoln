@@ -55,6 +55,7 @@ $("pesquisar").onclick = async () => {
   try {
     tecnicoAtual = await api(`/api/tecnicos/${encodeURIComponent($("matricula").value)}`);
     $("tecnico").innerHTML = `<strong>${tecnicoAtual.NOME || tecnicoAtual.nome || "Técnico"}</strong><br>Supervisor: ${tecnicoAtual.SUPERVISOR || tecnicoAtual.supervisor || "-"}<br>Coordenador: ${tecnicoAtual.COORDENADOR || tecnicoAtual.coordenador || "-"}`;
+    $("nome-assinante").textContent = tecnicoAtual.NOME || tecnicoAtual.nome || "Técnico";
   } catch (error) { $("tecnico").textContent = error.message; }
 };
 
