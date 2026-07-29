@@ -83,7 +83,13 @@ async function initialize() {
   `);
   const { rows } = await pool.query("SELECT COUNT(*)::int AS total FROM usuarios");
   if (rows[0].total === 0 && process.env.INITIAL_USERS_JSON) {
-    const users = JSON.parse(process.env.INITIAL_USERS_JSON);
+    const rawUsers = process.env.INITIAL_USERS_JSON.trim();
+    const users = JSON.parse(
+      ((rawUsers.startsWith("'") && rawUsers.endsWith("'")) ||
+       (rawUsers.startsWith('"') && rawUsers.endsWith('"')))
+        ? rawUsers.slice(1, -1)
+        : rawUsers
+    );
     for (const user of users) {
       await pool.query(
         "INSERT INTO usuarios (nome, login, senha_hash) VALUES ($1,$2,$3) ON CONFLICT (login) DO NOTHING",
