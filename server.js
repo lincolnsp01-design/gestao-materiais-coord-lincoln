@@ -124,8 +124,8 @@ app.get("/api/tecnicos/:matricula", requireUser, (req, res) => {
     .catch(() => res.status(500).json({ error: "Não foi possível pesquisar o técnico" }));
 });
 
-app.post("/api/admin/importar-tecnicos", async (req, res) => {
-  if (!process.env.IMPORT_TOKEN || req.headers.authorization !== `Bearer ${process.env.IMPORT_TOKEN}`) {
+app.post("/api/admin/importar-tecnicos", requireUser, async (req, res) => {
+  if (req.user.login !== "RIBEIRO01") {
     return res.status(401).json({ error: "Importação não autorizada" });
   }
   const tecnicos = Array.isArray(req.body) ? req.body : [];

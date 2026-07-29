@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Importar técnicos</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main>
+    <section class="card">
+      <h1>Importar cadastro de técnicos</h1>
+      <p>Área exclusiva do administrador RIBEIRO01.</p>
+      <input id="arquivo" type="file" accept=".json,application/json">
+      <button id="importar">Importar para o banco privado</button>
+      <p id="resultado"></p>
+    </section>
+  </main>
+  <script>
+    document.getElementById("importar").onclick = async () => {
+      const resultado = document.getElementById("resultado");
+      const arquivo = document.getElementById("arquivo").files[0];
+      if (!arquivo) return resultado.textContent = "Selecione o arquivo.";
+      try {
+        const origem = JSON.parse(await arquivo.text());
+        const tecnicos = Array.isArray(origem) ? origem : origem.tecnicos;
+        resultado.textContent = "Importando...";
+        const resposta = await fetch("/api/admin/importar-tecnicos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(tecnicos)
+        });
+        const dados = await resposta.json();
+        if (!resposta.ok) throw new Error(dados.error);
+        resultado.textContent = `${dados.importados} técnicos importados com sucesso.`;
+      } catch (erro) {
+        resultado.textContent = erro.message || "Falha na importação.";
+      }
+    };
+  </script>
+</body>
+</html>
