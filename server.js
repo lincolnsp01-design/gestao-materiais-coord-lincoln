@@ -179,7 +179,7 @@ app.post("/api/registros", requireUser, async (req, res) => {
   res.status(201).json(rows[0]);
 });
 
-app.get("*", (_req, res) => res.sendFile(require("path").join(__dirname, "public", "index.html")));
+app.use((_req, res) => res.sendFile(require("path").join(__dirname, "public", "index.html")));
 
 initialize()
   .then(() => app.listen(process.env.PORT || 3000))
