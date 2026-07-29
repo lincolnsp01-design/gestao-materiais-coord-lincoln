@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Gestão de materiais Coord Lincoln</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <section id="login" class="card login">
+    <h1>Gestão de materiais<br><span>Coord Lincoln</span></h1>
+    <p>Entre com o nome de usuário e a senha recebidos.</p>
+    <form id="login-form">
+      <label>Usuário<input id="usuario" autocomplete="username" required></label>
+      <label>Senha<input id="senha" type="password" autocomplete="current-password" required></label>
+      <button>Entrar</button>
+      <p id="login-erro" class="erro"></p>
+    </form>
+  </section>
+
+  <main id="painel" hidden>
+    <header>
+      <div><h1>Gestão de materiais</h1><p>Coord Lincoln</p></div>
+      <div class="operador">Fornecido por: <strong id="fornecedor"></strong> <button id="sair" class="secundario">Sair</button></div>
+    </header>
+    <section class="card">
+      <h2>1. Localizar técnico</h2>
+      <div class="linha"><input id="matricula" placeholder="MATR_SAP"><button id="pesquisar">Pesquisar</button></div>
+      <div id="tecnico" class="resultado"></div>
+    </section>
+    <section class="card">
+      <h2>2. Materiais fornecidos</h2>
+      <div id="materiais"></div>
+      <button id="adicionar" class="secundario">+ Acrescentar material</button>
+    </section>
+    <section class="card">
+      <h2>3. Assinatura do técnico</h2>
+      <canvas id="assinatura"></canvas>
+      <button id="limpar" class="secundario">Limpar assinatura</button>
+    </section>
+    <button id="registrar" class="registrar">Registrar fornecimento</button>
+    <p id="mensagem"></p>
+    <section class="card">
+      <h2>Histórico recente</h2>
+      <div id="historico"></div>
+    </section>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>
